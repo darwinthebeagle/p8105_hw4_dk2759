@@ -12,14 +12,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Problem 1
 
-This zip file contains data from a longitudinal study that included a control arm and an experimental arm. Data for each participant is included in a separate file, and file names include the subject ID and arm.
+This [zip file](http://p8105.com/data/hw5_data.zip) contains data from a longitudinal study that included a control arm and an experimental arm. Data for each participant is included in a separate file, and file names include the subject ID and arm.
 
 ### Goal: Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time.
 
-Extracting the filepaths and names
+Extract the file paths and names
 
 ```{r extract}
-filepath = list.files("./data", pattern = "*.csv", full.names = TRUE)
+filepath = list.files("./data/problem_1", pattern = "*.csv", full.names = TRUE)
 filename = basename(filepath)
 # pattern selects for only .csv file types
 # basename removes all of the path up to and including the last path separator (if any).
@@ -33,7 +33,7 @@ read = function(data, name){
 }
 ```
 
-Now iterating with `map` to read all the csv files and bind them together
+Iterate with `map` to read all the csv files and bind them together
 
 ```{r map, include = FALSE}
 path_name = purrr::map2(filepath, filename, read)
@@ -51,7 +51,6 @@ tidy_df = df %>%
   mutate(id = as.factor(id)) %>% 
   mutate(arm = str_replace(arm, "con", "control")) %>% 
   mutate(arm = str_replace(arm, "exp", "experimental"))
-
 skimr::skim(tidy_df)
 ```
 
@@ -77,9 +76,41 @@ In the experimental group the scores trend upwards over time while the control g
 
 # Problem 2
 
-The Washington Post has gathered data on homicides in 50 large U.S. cities and made the data available through a GitHub repository here. You can read their accompanying article here.
+The _Washington Post_ has gathered data on homicides in 50 large U.S. cities and made the data available through a GitHub repository [here](https://github.com/washingtonpost/data-homicides). You can read their accompanying article [here](https://www.washingtonpost.com/graphics/2018/investigations/where-murders-go-unsolved/). 
 
-Describe the raw data. Create a city_state variable (e.g. “Baltimore, MD”) and then summarize within cities to obtain the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
+#### Data import
+
+```{r import}
+homicide_df = read_csv("./data/problem_2/wapo_homicide_data.csv", col_names = TRUE)
+```
+
+Describe the raw data:
+
+These data have `r nrow(homicide_df)` rows and `r ncol(homicide_df)` columns. The variables include a unique id, report date, first and last names of victims, age, sex, race, location (city, state, lat, long), and disposition. 
+
+#### Data manipulation
+
+Create a city_state variable (e.g. “Baltimore, MD”) 
+
+```{r city_state}
+homicide_df = homicide_df = read_csv("./data/problem_2/wapo_homicide_data.csv", col_names = TRUE) %>% 
+  mutate(city_state = paste(city, state, sep = ", "))
+# sep = ", " is also the same as city, ",", " ", state)
+```
+
+
+Summarize within cities to obtain the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
+
+```{r summarize_homicides}
+homicide
+```
+
+Total number of homicides in Baltimore, MD
+
+Number unsolved homicide in Baltimore, MD
+```{r summarize_unsolved}
+
+```
 
 For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
 
