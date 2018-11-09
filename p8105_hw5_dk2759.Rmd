@@ -8,7 +8,6 @@ output: github_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(rvest)
-library(purrr)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -16,27 +15,40 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This zip file contains data from a longitudinal study that included a control arm and an experimental arm. Data for each participant is included in a separate file, and file names include the subject ID and arm.
 
-```{r build_dataframe}
-df = tibble(list.files(path = "./data"))
-is.list(df)
+### Goal: Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time.
 
-# make a function for reading out each csv in my list
-list_df <- function(file_name) {
-  read_csv(paste0("data", df))
-}
+Extracting the filepaths and names
 
-# map
-mutate(map(.x = df, .f = list_df))
+```{r}
+filepaths = list.files("./data", pattern = "*.csv", full.names = TRUE)
+filenames = basename(filepaths)
+# pattern selects for only .csv file types
+# basename removes all of the path up to and including the last path separator (if any).
 ```
 
+Function to read the data
 
-Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time:
+```{r}
+read_files = function(data, name){
+  list(read_csv(file = data) %>% mutate(id = name))
+}
+```
 
-    Start with a dataframe containing all file names; the list.files function will help
-    Iterate over file names and read in data for each subject using purrr::map and saving the result as a new variable in the dataframe
-    Tidy the result; manipulate file names to include control arm and subject ID, make sure weekly observations are “tidy”, and do any other tidying that’s necessary
+Now iterating with `map` to read all the csv files and bind them together
+
+```{r}
+names_and_paths = purrr::map2(filepaths, filenames, read_files)
+df = purrr::map_df(names_and_paths, bind_rows)
+```
+
+## Visualization
 
 Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
+
+```{r}
+
+```
+
 
 ## Problem 2
 
@@ -48,4 +60,23 @@ For the city of Baltimore, MD, use the prop.test function to estimate the propor
 
 Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
 
-Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides.
+Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides
+
+
+==============
+Notes to self
+tried this, some sort of directory error to get my function to work.
+
+#```{r build_dataframe}
+# list the files
+df = tibble(list.files(path = "./data"))
+is.list(df)
+
+# make a function for reading out each csv in my list
+list_df <- function(file_name) {
+  read_csv(paste0("data", df))
+}
+
+# map
+mutate(map(.x = df, .f = list_df))
+```.
