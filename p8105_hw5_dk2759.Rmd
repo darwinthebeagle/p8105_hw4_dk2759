@@ -73,6 +73,7 @@ labs(
     color = "Subject")
 ```
 
+In the experimental group the scores trend upwards over time while the control groups stay roughly constant. Don't have enough information to say what the numbers represent. 
 
 # Problem 2
 
