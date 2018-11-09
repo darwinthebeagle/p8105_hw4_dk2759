@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This [zip file](http://p8105.com/data/hw5_data.zip) contains data from a longitudinal study that included a control arm and an experimental arm. Data for each participant is included in a separate file, and file names include the subject ID and arm.
 
-### Goal: Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time.
+##### Goal: Create a tidy dataframe containing data from all participants, including the subject ID, arm, and observations over time.
 
 Extract the file paths and names
 
@@ -98,27 +98,36 @@ homicide_df = homicide_df = read_csv("./data/problem_2/wapo_homicide_data.csv", 
 # sep = ", " is also the same as city, ",", " ", state)
 ```
 
-
 Summarize within cities to obtain the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
 
 ```{r summarize_homicides}
-sum_homicide_df = homicide_df %>% 
+summ_homicide_df = homicide_df %>% 
   group_by(city_state) %>% 
   mutate(homicide_tot = n()) %>% 
   filter(disposition == "Closed without arrest" | disposition == "Open/No arrest") %>%
   mutate(homicide_unsolved = n()) %>% 
-  select(city_state, homicide_tot, homicide_unsolved) %>% 
-  knitr::kable(digits = 5) %>% View()
+  select(city_state, homicide_unsolved, homicide_tot) %>%
+  distinct(.keep_all = FALSE)
 ```
 
-Total number of homicides in Baltimore, MD
+#### Balitmore Homicides
 
-Number unsolved homicide in Baltimore, MD
-```{r summarize_unsolved}
+Total number of homicides and unsolved homicides in Baltimore, MD
 
+```{r summarize_Baltimore}
+baltimore = summ_homicide_df %>% 
+  filter(city_state == "Baltimore, MD")
 ```
 
 For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+
+```{r prop.test_Baltimore}
+prop.test(baltimore[[2]], baltimore[[3]]) %>% 
+  broom::tidy() %>% 
+  select(estimate, conf.low, conf.high) %>% 
+  knitr::kable(digits = 3)
+```
+
 
 Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
 
