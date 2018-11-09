@@ -35,7 +35,7 @@ read = function(data, name){
 
 Iterate with `map` to read all the csv files and bind them together
 
-```{r map, include = FALSE}
+```{r map, message=FALSE}
 path_name = purrr::map2(filepath, filename, read)
 df = purrr::map_df(path_name, bind_rows)
 ```
@@ -103,51 +103,81 @@ Summarize within cities to obtain the total number of homicides and the number o
 ```{r summarize_homicides}
 summ_homicide_df = homicide_df %>% 
   group_by(city_state) %>% 
-  mutate(homicide_tot = n()) %>% 
+  mutate(homicide_total = n()) %>% 
   filter(disposition == "Closed without arrest" | disposition == "Open/No arrest") %>%
   mutate(homicide_unsolved = n()) %>% 
-  select(city_state, homicide_unsolved, homicide_tot) %>%
+  select(city_state, homicide_unsolved, homicide_total) %>%
   distinct(.keep_all = FALSE)
+
+summ_homicide_df
 ```
+
+Summary of homicides displays the data as `r nrow(summ_homicide_df)` observations of data, and 3 variables: city_state, homicide_unsolved, homicide_total.
 
 #### Balitmore Homicides
 
-Total number of homicides and unsolved homicides in Baltimore, MD
-
-```{r summarize_Baltimore}
-baltimore = summ_homicide_df %>% 
-  filter(city_state == "Baltimore, MD")
-```
-
-For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
+_For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe._
 
 ```{r prop.test_Baltimore}
-prop.test(baltimore[[2]], baltimore[[3]]) %>% 
-  broom::tidy() %>% 
-  select(estimate, conf.low, conf.high) %>% 
+# Summary of Baltimore homicides
+baltimore = summ_homicide_df %>% 
+  filter(city_state == "Baltimore, MD")
+
+# proportion testing, estimating number of unsolved
+prop_unsolved_baltimore = prop.test(baltimore[[2]], baltimore[[3]]) %>% 
+  broom::tidy() %>%  
+  select(estimate, conf.low, conf.high) %>%
   knitr::kable(digits = 3)
 ```
 
 
-Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
+#### Prop.test for all cities
 
-Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides
+_Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city._
 
-
-==============
-Notes to self
-tried this, some sort of directory error to get my function to work.
-
-#```{r build_dataframe}
-# list the files
-df = tibble(list.files(path = "./data"))
-is.list(df)
-
-# make a function for reading out each csv in my list
-list_df <- function(file_name) {
-  read_csv(paste0("data", df))
+```{r prop.test_all_cities}
+# write function for prop_test for mapping later
+prop_test = function(var_numerator, var_denominator) {
+  
+  try(prop.test(var_numerator, var_denominator) %>% 
+    broom::tidy() %>% 
+    select(estimate, conf.low, conf.high), silent = FALSE)
+  
 }
+# try is a wrapper to run an expression that might fail and allow the user's code to handle error-recovery. silent hides the errors.
 
-# map
-mutate(map(.x = df, .f = list_df))
-```.
+prop_test_unsolved_cities = 
+  summ_homicide_df %>% 
+  mutate(prop_test = map2(homicide_unsolved, homicide_total, prop_test)) %>%
+  unnest() %>% 
+  ungroup() %>% 
+  janitor::clean_names()
+
+prop_test_unsolved_cities
+```
+
+Comment on prop.test for all cities:
+
+Wrote a function to run a `prop.test` mapped the estimates and confidence intervals to each homicide data point for each city. Added 3 new variables of estimates, and low and high confidence limits in a 95% confidence interval. 
+
+#### Plotting the estimates and CIs
+
+**Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides**
+
+```{r plot_est_CI}
+prop_test_unsolved_cities %>% 
+  mutate(city_state = fct_reorder(city_state, estimate)) %>% 
+  ggplot(aes(x = city_state, y = estimate)) + 
+  geom_point() + 
+  geom_errorbar(aes(ymin = conf_low, ymax = conf_high)) + 
+  theme(axis.text.x = element_text(angle = 70, hjust = 1, size = 10)) +
+  labs(
+    title = "Proportion Unsolved Homicides for 50 Large American Cities from Last Decade", 
+    x = "City",
+    y = "Estimate of Proportion of Unsolved Homicides",
+    caption = "Data source from Washington Post, error bars represent 95% confidence interval"
+  )
+```
+
+Comment on plot: Richmond, VA has the lowest estimated unsolved homicides, whereas Chicago, IL has the most, over 70% with the narrowest confidence interval amongst the 50 cities! 
+New York, NY is within the top 15 proportion of solved homicides with around 40%. 
