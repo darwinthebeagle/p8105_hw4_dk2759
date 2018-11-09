@@ -7,7 +7,6 @@ output: github_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
-library(rvest)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -19,38 +18,63 @@ This zip file contains data from a longitudinal study that included a control ar
 
 Extracting the filepaths and names
 
-```{r}
-filepaths = list.files("./data", pattern = "*.csv", full.names = TRUE)
-filenames = basename(filepaths)
+```{r extract}
+filepath = list.files("./data", pattern = "*.csv", full.names = TRUE)
+filename = basename(filepath)
 # pattern selects for only .csv file types
 # basename removes all of the path up to and including the last path separator (if any).
 ```
 
 Function to read the data
 
-```{r}
-read_files = function(data, name){
+```{r function}
+read = function(data, name){
   list(read_csv(file = data) %>% mutate(id = name))
 }
 ```
 
 Now iterating with `map` to read all the csv files and bind them together
 
-```{r}
-names_and_paths = purrr::map2(filepaths, filenames, read_files)
-df = purrr::map_df(names_and_paths, bind_rows)
+```{r map, include = FALSE}
+path_name = purrr::map2(filepath, filename, read)
+df = purrr::map_df(path_name, bind_rows)
 ```
 
-## Visualization
+Tidy Data from wide to long form, separate the study arms and IDs
+
+```{r tidy}
+tidy_df = df %>%
+  gather(key = week, value = score, week_1:week_8) %>% 
+  mutate(id = str_replace(id, ".csv",""), 
+         week = as.numeric(str_replace(week, "week_", ""))) %>% 
+  separate(id, into = c("arm", "id"), sep = "_") %>% 
+  mutate(id = as.factor(id)) %>% 
+  mutate(arm = str_replace(arm, "con", "control")) %>% 
+  mutate(arm = str_replace(arm, "exp", "experimental"))
+
+skimr::skim(tidy_df)
+```
+
+These longitudinal study data contains 160 observations and 4 variables (`arm` : character. `id` : factor. `score` and `week` : numeric). `arm` is either experimental or control. The study duration lasts 8 weeks, there are 10 subjects in each arm.
+
+### Visualization 
 
 Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
 
-```{r}
-
+```{r plot}
+ggplot(tidy_df, aes(x = week, y = score, color = id, group = id )) + 
+  geom_point(alpha = 0.5) + 
+  geom_line() + 
+  facet_grid(~arm) +
+labs(
+    title = "Study Observations", 
+    x = "Week", 
+    y = "Observation", 
+    color = "Subject")
 ```
 
 
-## Problem 2
+# Problem 2
 
 The Washington Post has gathered data on homicides in 50 large U.S. cities and made the data available through a GitHub repository here. You can read their accompanying article here.
 
